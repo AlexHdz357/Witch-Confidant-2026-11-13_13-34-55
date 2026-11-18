@@ -1,9 +1,10 @@
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using TMPro;
 using Ink.Runtime;
+using TMPro;
+using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class DialogueManager : MonoBehaviour
@@ -21,6 +22,8 @@ public class DialogueManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI displayNameText;
     [SerializeField] private Animator portraitAnimator;
     private Animator layoutAnimator;
+    private Action onDialogueComplete;
+
 
     [Header("Choices UI")]
     [SerializeField] private GameObject[] choices;
@@ -144,8 +147,28 @@ public class DialogueManager : MonoBehaviour
         }
     }
 
-    public void EnterDialogueMode(TextAsset inkJSON)
+
+    public void EnterDialogueMode(
+        TextAsset inkJSON,
+        Action onComplete = null
+    )
     {
+        if (dialogueIsPlaying)
+        {
+            Debug.LogWarning(
+                "Cannot start dialogue: another dialogue is already playing."
+            );
+            return;
+        }
+
+        if (inkJSON == null)
+        {
+            Debug.LogWarning("Cannot start dialogue: Ink JSON is missing.");
+            return;
+        }
+
+        onDialogueComplete = onComplete;
+
         currentStory = new Story(inkJSON.text);
 
         dialogueIsPlaying = true;
@@ -163,6 +186,8 @@ public class DialogueManager : MonoBehaviour
         ContinueStory();
     }
 
+
+
     private IEnumerator ExitDialogueMode()
     {
         yield return new WaitForSeconds(0.2f);
@@ -174,7 +199,13 @@ public class DialogueManager : MonoBehaviour
         dialogueText.text = "";
 
         SetCurrentAudioInfo(defaultAudioInfo.id);
+
+        Action callback = onDialogueComplete;
+        onDialogueComplete = null;
+
+        callback?.Invoke();
     }
+
 
     private void ContinueStory()
     {
@@ -347,10 +378,10 @@ public class DialogueManager : MonoBehaviour
             }
             else
             {
-                int randomIndex = Random.Range(0, dialogueTypingSoundClips.Length);
+                int randomIndex = UnityEngine.Random.Range(0, dialogueTypingSoundClips.Length);
                 soundClip = dialogueTypingSoundClips[randomIndex];
 
-                audioSource.pitch = Random.Range(minPitch, maxPitch);
+                audioSource.pitch = UnityEngine.Random.Range(minPitch, maxPitch);
             }
 
             audioSource.PlayOneShot(soundClip);

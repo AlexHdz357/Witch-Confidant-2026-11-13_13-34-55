@@ -1,5 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
+
 using UnityEngine;
 
 public class DialogueTrigger : MonoBehaviour
@@ -7,44 +6,65 @@ public class DialogueTrigger : MonoBehaviour
     [Header("Visual Cue")]
     [SerializeField] private GameObject visualCue;
 
-    [Header("Ink JSON")]
+    [Header("Default Ink JSON")]
     [SerializeField] private TextAsset inkJSON;
 
-    private bool playerInRange;
+    [Header("Automatic Narrative")]
+    [SerializeField] private bool triggerAutomatically = false;
+    [SerializeField] private int automaticEventID;
 
-    private void Awake() 
+    private bool playerInRange;
+    private bool automaticNarrativeTriggered;
+
+    private void Awake()
     {
         playerInRange = false;
-        visualCue.SetActive(false);
-    }
+        automaticNarrativeTriggered = false;
 
-    private void Update() 
-    {
-        if (playerInRange && !DialogueManager.GetInstance().dialogueIsPlaying) 
-        {
-            visualCue.SetActive(true);
-            if (InputManager.GetInstance().GetInteractPressed()) 
-            {
-                DialogueManager.GetInstance().EnterDialogueMode(inkJSON);
-            }
-        }
-        else 
+        if (visualCue != null)
         {
             visualCue.SetActive(false);
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D collider) 
+    private void Update()
     {
-        if (collider.gameObject.tag == "Player")
+        bool canInteract =
+            playerInRange &&
+            !DialogueManager.GetInstance().dialogueIsPlaying;
+
+        if (visualCue != null)
         {
-            playerInRange = true;
+            visualCue.SetActive(canInteract);
+        }
+
+        if (canInteract &&
+            InputManager.GetInstance().GetInteractPressed())
+        {
+            NarrativeEventManager.GetInstance()
+                .InteractWithNPC(transform, inkJSON);
         }
     }
 
-    private void OnTriggerExit2D(Collider2D collider) 
+    private void OnTriggerEnter2D(Collider2D collider)
     {
-        if (collider.gameObject.tag == "Player")
+        if (collider.CompareTag("Player"))
+        {
+            playerInRange = true;
+
+            if (triggerAutomatically && !automaticNarrativeTriggered)
+            {
+                automaticNarrativeTriggered = true;
+
+                NarrativeEventManager.GetInstance()
+                    .QueueNarrative(automaticEventID);
+            }
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D collider)
+    {
+        if (collider.CompareTag("Player"))
         {
             playerInRange = false;
         }
